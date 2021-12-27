@@ -1,0 +1,36 @@
+FROM pytorch/pytorch:1.8.0-cuda11.1-cudnn8-devel
+MAINTAINER kongjiadongyuan
+
+RUN apt-get -yqq update && \
+	apt-get -yqq install vim openssh-server git build-essential tmux && \
+	echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
+	echo "export PATH=/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> /root/.bashrc
+
+RUN cd /root && git clone https://github.com/pytorch/fairseq &&\
+	cd fairseq && pip install --editable ./ &&\
+	cd /root && git clone https://github.com/NVIDIA/apex &&\
+	cd apex && \
+	pip install -r ./requirements.txt && \
+	pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" \
+  	--global-option="--deprecated_fused_adam" --global-option="--xentropy" \
+  	--global-option="--fast_multihead_attn" ./
+
+RUN conda install -y jupyter notebook && \
+	mkdir /jupyter && \
+	jupyter notebook --generate-config && \
+	echo "c.NotebookApp.allow_origin = '*'" >> /root/.jupyter/jupyter_notebook_config.py && \
+	echo "c.NotebookApp.ip = '0.0.0.0'" >> /root/.jupyter/jupyter_notebook_config.py && \
+	echo "c.NotebookApp.allow_root=True" >> /root/.jupyter/jupyter_notebook_config.py && \
+	echo "c.NotebookApp.token=''" >> /root/.jupyter/jupyter_notebook_config.py  && \
+	echo "c.NotebookApp.notebook_dir = '/jupyter'" >> /root/.jupyter/jupyter_notebook_config.py
+
+RUN pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.8.0+cu111.html && \
+	pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.8.0+cu111.html && \
+	pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-1.8.0+cu111.html && \
+	pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.8.0+cu111.html && \
+	pip install torch-geometric
+
+EXPOSE 22
+EXPOSE 8888
+
+ENTRYPOINT service ssh restart && bash
